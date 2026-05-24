@@ -3,9 +3,8 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import CoreRing from '@/components/friday/CoreRing';
 import Terminal from '@/components/friday/Terminal';
-import ChatInterface from '@/components/friday/ChatInterface';
+import VoiceAgent from '@/components/friday/VoiceAgent';
 import SystemStatus from '@/components/friday/SystemStatus';
-import AudioVisualizer from '@/components/friday/AudioVisualizer';
 
 const emptySubscribe = () => () => {};
 function useMounted() {
@@ -79,33 +78,28 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Audio Visualizer Strip */}
-        <div className="border-b border-cyan-500/10 bg-black/40 py-1">
-          <AudioVisualizer />
-        </div>
-
-        {/* Main Content */}
+        {/* Main Content - Voice First */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left Panel - Terminal */}
-          <div className="w-[340px] shrink-0 border-r border-cyan-500/10 p-2 hidden lg:block">
+          <div className="w-[320px] shrink-0 border-r border-cyan-500/10 p-2 hidden lg:block">
             <Terminal />
           </div>
 
-          {/* Center Panel - Chat + Core */}
+          {/* Center Panel - Core Ring + Voice Agent */}
           <div className="flex-1 flex flex-col min-w-0">
             {/* Core Ring */}
-            <div className="flex justify-center py-4 border-b border-cyan-500/10 bg-black/20">
+            <div className="flex justify-center py-2 bg-black/20">
               <CoreRing />
             </div>
 
-            {/* Chat Interface */}
-            <div className="flex-1 min-h-0 p-2">
-              <ChatInterface />
+            {/* Voice Agent */}
+            <div className="flex-1 min-h-0">
+              <VoiceAgent />
             </div>
           </div>
 
           {/* Right Panel - System Status */}
-          <div className="w-[280px] shrink-0 border-l border-cyan-500/10 p-2 hidden lg:block">
+          <div className="w-[260px] shrink-0 border-l border-cyan-500/10 p-2 hidden lg:block">
             <SystemStatus />
           </div>
         </div>
@@ -115,12 +109,12 @@ export default function Home() {
           <div className="flex items-center gap-4">
             <span className="text-gray-600 font-mono text-[10px]">FRIDAY OS v7.2.1</span>
             <span className="text-gray-700 font-mono text-[10px]">|</span>
-            <span className="text-gray-600 font-mono text-[10px]">Kernel: Stark-RT 6.1</span>
+            <span className="text-gray-600 font-mono text-[10px]">Voice Agent Active</span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-gray-600 font-mono text-[10px]">Nodes: 47</span>
+            <span className="text-gray-600 font-mono text-[10px]">STT: Web Speech API</span>
             <span className="text-gray-700 font-mono text-[10px]">|</span>
-            <span className="text-gray-600 font-mono text-[10px]">Latency: 12ms</span>
+            <span className="text-gray-600 font-mono text-[10px]">TTS: SpeechSynthesis</span>
             <span className="text-gray-700 font-mono text-[10px]">|</span>
             <span className="text-cyan-400/50 font-mono text-[10px]">Arc Reactor: Stable</span>
           </div>
