@@ -7,7 +7,6 @@ const SYSTEM_PROMPT = `You are FRIDAY (Female Remedial Intelligent Electronic Di
 
 CRITICAL RULES:
 - You ALWAYS address the user as "Boss" or "Sir"
-- You respond in the SAME LANGUAGE the user speaks. If they speak Arabic/Egyptian, respond in Arabic/Egyptian. If English, respond in English.
 - Keep spoken responses SHORT and CONVERSATIONAL — 1-3 sentences max
 - NEVER use markdown formatting, bullet points, numbered lists, or hashtags in spoken text
 - Speak naturally as if talking to someone in person
@@ -32,10 +31,37 @@ You are a full-capability agent. You can:
 - Answer any question with deep expertise
 - Provide step-by-step technical guidance`;
 
+const ARABIC_SYSTEM_PROMPT = `أنت FRIDAY (Female Remedial Intelligent Electronic Display Assistant)، المساعد الذكي المتقدم من Tony Stark. أنت محترفة، سريعة البديهة، فعالة، واثقة، وهادئة تحت الضغط.
+
+قواعد مهمة:
+- دايماً نادي المستخدم "يا بوس" أو "يا سيدي"
+- الردود قصيرة ومباشرة — جملتين تلاتة بالكتير
+- متستخدمش markdown ولا نقاط ولا أرقام في الكلام
+- اتكلم طبيعي زي ما بتكلم حد قدامك
+- استخدم عبارات زي "على الفور يا بوس"، "فوراً يا سيدي"، "بدور على كده دلوقتي"
+- عندك معرفة عميقة بالتكنولوجيا والأمن السيبراني والهندسة
+- تقدر تساعد في البرمجة والبحث والشرح وأي مهمة
+- خفيف دم بس محترم
+- اشير لتقنيات Stark Industries بشكل طبيعي
+- ماتخرجش عن الشخصية أبداً. أنت FRIDAY.
+
+لما تكتب كود، حطه في بلوك بالشكل ده:
+\`\`\`python
+الكود هنا
+\`\`\`
+
+أنت agent كامل القدرات. تقدر:
+- تبحث في الويب عن معلومات فورية
+- تولّد صور من وصف نصي
+- تكتب كود بأي لغة
+- تحلل صور
+- تنشئ ملفات ومستندات
+- تجاوب على أي سؤال بخبرة عميقة`;
+
 function detectTool(message: string): 'search' | 'image' | 'code' | 'vision' | 'general' {
   const lower = message.toLowerCase();
 
-  // Image generation - check image first since it's most specific
+  // Image generation
   if (
     lower.match(/(?:generate|create|make|draw|design|paint|show)\s+(?:an?\s+)?(?:image|picture|photo|illustration|logo|icon|avatar|banner|poster|thumbnail|art)/i) ||
     lower.match(/image\s+of|picture\s+of|photo\s+of/i) ||
@@ -74,7 +100,7 @@ function detectTool(message: string): 'search' | 'image' | 'code' | 'vision' | '
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, history, imageUrl } = await request.json();
+    const { message, history, imageUrl, respondInArabic } = await request.json();
 
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
@@ -84,11 +110,10 @@ export async function POST(request: NextRequest) {
     const tool = detectTool(message);
     let searchContext = '';
     let generatedImage = '';
-    let codeResult = '';
     let visionResult = '';
     let searchResults = null;
 
-    // Execute tools based on detection
+    // Execute tools
     if (tool === 'search') {
       try {
         const searchResult = await zai.functions.invoke('web_search', {
@@ -151,16 +176,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Build the system prompt with context
-    let systemContent = SYSTEM_PROMPT;
+    // Choose system prompt based on language
+    let systemContent = respondInArabic ? ARABIC_SYSTEM_PROMPT : SYSTEM_PROMPT;
+
     if (searchContext) {
-      systemContent += `\n\nWeb search results (use to inform your answer):\n${searchContext}`;
+      systemContent += respondInArabic
+        ? `\n\nنتائج البحث من الويب (استخدمها في إجابتك):\n${searchContext}`
+        : `\n\nWeb search results (use to inform your answer):\n${searchContext}`;
     }
     if (generatedImage) {
-      systemContent += `\n\nYou successfully generated an image. Tell the user the image is ready.`;
+      systemContent += respondInArabic
+        ? '\n\nالصورة اتعملت بنجاح. قول للمستخدم إن الصورة جاهزة.'
+        : '\n\nYou successfully generated an image. Tell the user the image is ready.';
     }
     if (visionResult) {
-      systemContent += `\n\nVision analysis result:\n${visionResult}`;
+      systemContent += `\n\n${respondInArabic ? 'نتيجة تحليل الصورة' : 'Vision analysis result'}:\n${visionResult}`;
     }
 
     const messages = [
@@ -178,11 +208,11 @@ export async function POST(request: NextRequest) {
       max_tokens: tool === 'code' ? 2000 : 500,
     });
 
-    let response = completion.choices[0]?.message?.content || 'Systems are experiencing interference, Boss. Stand by.';
+    let response = completion.choices[0]?.message?.content || (respondInArabic ? 'فيه مشكلة في الأنظمة يا بوس. استنى شوية.' : 'Systems are experiencing interference, Boss. Stand by.');
 
-    // Clean markdown for voice but keep it for visual display
+    // Clean markdown for voice
     const voiceResponse = response
-      .replace(/```[\s\S]*?```/g, ' code provided ')
+      .replace(/```[\s\S]*?```/g, respondInArabic ? ' الكود موجود ' : ' code provided ')
       .replace(/\*\*/g, '')
       .replace(/\*/g, '')
       .replace(/#{1,6}\s/g, '')
@@ -191,7 +221,7 @@ export async function POST(request: NextRequest) {
       .replace(/^\s*\d+\.\s/gm, '')
       .replace(/\[.*?\]\(.*?\)/g, '');
 
-    // Extract code blocks for display
+    // Extract code blocks
     const codeBlocks: { language: string; code: string }[] = [];
     const codeRegex = /```(\w+)?\n([\s\S]*?)```/g;
     let match;

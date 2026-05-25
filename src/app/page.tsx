@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import CoreRing from '@/components/friday/CoreRing';
 import Terminal from '@/components/friday/Terminal';
 import VoiceAgent from '@/components/friday/VoiceAgent';
 import SystemStatus from '@/components/friday/SystemStatus';
@@ -43,7 +42,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden">
-      {/* Background grid effect */}
+      {/* Background grid */}
       <div
         className="fixed inset-0 opacity-[0.03]"
         style={{
@@ -78,28 +77,20 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Main Content - Voice First */}
+        {/* Main Content - Voice First, No Chat */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Left Panel - Terminal */}
-          <div className="w-[320px] shrink-0 border-r border-cyan-500/10 p-2 hidden lg:block">
+          {/* Left Panel - Terminal (hidden on small screens) */}
+          <div className="w-[280px] shrink-0 border-r border-cyan-500/10 p-2 hidden xl:block">
             <Terminal />
           </div>
 
-          {/* Center Panel - Core Ring + Voice Agent */}
-          <div className="flex-1 flex flex-col min-w-0">
-            {/* Core Ring */}
-            <div className="flex justify-center py-2 bg-black/20">
-              <CoreRing />
-            </div>
-
-            {/* Voice Agent */}
-            <div className="flex-1 min-h-0">
-              <VoiceAgent />
-            </div>
+          {/* Center Panel - Voice Agent (includes Arc Reactor) */}
+          <div className="flex-1 min-w-0">
+            <VoiceAgent />
           </div>
 
-          {/* Right Panel - System Status */}
-          <div className="w-[260px] shrink-0 border-l border-cyan-500/10 p-2 hidden lg:block">
+          {/* Right Panel - System Status (hidden on small screens) */}
+          <div className="w-[220px] shrink-0 border-l border-cyan-500/10 p-2 hidden xl:block">
             <SystemStatus />
           </div>
         </div>
@@ -107,14 +98,12 @@ export default function Home() {
         {/* Bottom Bar */}
         <footer className="flex items-center justify-between px-6 py-2 border-t border-cyan-500/10 bg-black/80 backdrop-blur-sm">
           <div className="flex items-center gap-4">
-            <span className="text-gray-600 font-mono text-[10px]">FRIDAY OS v7.2.1</span>
+            <span className="text-gray-600 font-mono text-[10px]">FRIDAY OS v7.3.0</span>
             <span className="text-gray-700 font-mono text-[10px]">|</span>
-            <span className="text-gray-600 font-mono text-[10px]">Voice Agent Active</span>
+            <span className="text-gray-600 font-mono text-[10px]">Voice Agent</span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-gray-600 font-mono text-[10px]">STT: Web Speech API</span>
-            <span className="text-gray-700 font-mono text-[10px]">|</span>
-            <span className="text-gray-600 font-mono text-[10px]">TTS: SpeechSynthesis</span>
+            <span className="text-cyan-400/40 font-mono text-[10px]">العربي → English → العربي</span>
             <span className="text-gray-700 font-mono text-[10px]">|</span>
             <span className="text-cyan-400/50 font-mono text-[10px]">Arc Reactor: Stable</span>
           </div>
