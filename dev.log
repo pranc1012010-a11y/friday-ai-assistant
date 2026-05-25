@@ -61,3 +61,52 @@ https://nextjs.org/telemetry
  GET / 200 in 30ms (compile: 2ms, render: 28ms)
  GET / 200 in 47ms (compile: 2ms, render: 44ms)
  GET / 200 in 34ms (compile: 2ms, render: 32ms)
+ GET / 200 in 31ms (compile: 1971µs, render: 29ms)
+ GET / 200 in 30ms (compile: 3ms, render: 27ms)
+ GET / 200 in 27ms (compile: 1719µs, render: 25ms)
+ GET / 200 in 140ms (compile: 46ms, render: 94ms)
+ GET / 200 in 83ms (compile: 4ms, render: 78ms)
+ GET / 200 in 80ms (compile: 32ms, render: 48ms)
+ GET / 200 in 81ms (compile: 17ms, render: 64ms)
+ GET / 200 in 28ms (compile: 2ms, render: 25ms)
+ GET / 200 in 13ms (compile: 1233µs, render: 12ms)
+ GET / 200 in 33ms (compile: 2ms, render: 31ms)
+ GET / 200 in 17ms (compile: 2ms, render: 15ms)
+ GET / 200 in 29ms (compile: 2ms, render: 27ms)
+ GET / 200 in 12ms (compile: 1594µs, render: 11ms)
+ GET / 200 in 98ms (compile: 3ms, render: 95ms)
+ GET / 200 in 32ms (compile: 2ms, render: 30ms)
+ GET / 200 in 48ms (compile: 4ms, render: 44ms)
+ GET / 200 in 21ms (compile: 1737µs, render: 19ms)
+ GET / 200 in 21ms (compile: 1663µs, render: 20ms)
+ GET / 200 in 37ms (compile: 3ms, render: 35ms)
+ GET / 200 in 49ms (compile: 3ms, render: 45ms)
+ GET / 200 in 25ms (compile: 1996µs, render: 23ms)
+ GET / 200 in 38ms (compile: 4ms, render: 34ms)
+ GET / 200 in 29ms (compile: 4ms, render: 25ms)
+ GET / 200 in 34ms (compile: 3ms, render: 31ms)
+ GET / 200 in 38ms (compile: 3ms, render: 36ms)
+ GET / 200 in 34ms (compile: 1893µs, render: 32ms)
+ GET / 200 in 22ms (compile: 1952µs, render: 20ms)
+✓ Compiled in 203ms
+Failed to make image generation request: Error: API request failed with status 400: {"contentFilter":[{"level":2,"role":"user"}],"error":{"code":"1301","message":"系统检测到输入或生成内容可能包含不安全或敏感内容，请您避免输入易产生敏感内容的提示语，感谢您的配合。"}}
+    at async POST (src/app/api/friday/route.ts:116:31)
+  114 |     if (tool === 'image') {
+  115 |       try {
+> 116 |         const imageResponse = await zai.images.generations.create({
+      |                               ^
+  117 |           prompt: message,
+  118 |           size: '1024x1024',
+  119 |         });
+Image generation failed: Error: API request failed with status 400: {"contentFilter":[{"level":2,"role":"user"}],"error":{"code":"1301","message":"系统检测到输入或生成内容可能包含不安全或敏感内容，请您避免输入易产生敏感内容的提示语，感谢您的配合。"}}
+    at async POST (src/app/api/friday/route.ts:116:31)
+  114 |     if (tool === 'image') {
+  115 |       try {
+> 116 |         const imageResponse = await zai.images.generations.create({
+      |                               ^
+  117 |           prompt: message,
+  118 |           size: '1024x1024',
+  119 |         });
+ GET / 200 in 113ms (compile: 45ms, render: 68ms)
+ POST /api/friday 200 in 15.7s (compile: 38ms, render: 15.7s)
+ GET / 200 in 42ms (compile: 7ms, render: 35ms)

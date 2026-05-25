@@ -73,7 +73,7 @@ function detectTool(message: string): 'search' | 'image' | 'code' | 'vision' | '
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, history, imageUrl } = await request.json();
+    const { message, history, imageUrl, respondInArabic } = await request.json();
 
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
@@ -152,6 +152,9 @@ export async function POST(request: NextRequest) {
 
     // Build the system prompt with context
     let systemContent = SYSTEM_PROMPT;
+    if (respondInArabic) {
+      systemContent += '\n\nIMPORTANT: The user spoke in Arabic. You MUST respond in Arabic (Egyptian dialect preferred). Keep it natural and conversational in Arabic.';
+    }
     if (searchContext) {
       systemContent += `\n\nWeb search results (use to inform your answer):\n${searchContext}`;
     }
