@@ -35,11 +35,12 @@ You are a full-capability agent. You can:
 function detectTool(message: string): 'search' | 'image' | 'code' | 'vision' | 'general' {
   const lower = message.toLowerCase();
 
-  // Image generation
+  // Image generation - check image first since it's most specific
   if (
-    lower.match(/(?:generate|create|make|draw|design|paint)\s+(?:an?\s+)?(?:image|picture|photo|illustration|logo|icon|avatar|banner|poster|thumbnail|art)/i) ||
-    lower.match(/صوّر|ارسم|اعمل صورة|صورة|رسم|لوحة/i) ||
-    lower.match(/image\s+of|picture\s+of|photo\s+of/i)
+    lower.match(/(?:generate|create|make|draw|design|paint|show)\s+(?:an?\s+)?(?:image|picture|photo|illustration|logo|icon|avatar|banner|poster|thumbnail|art)/i) ||
+    lower.match(/image\s+of|picture\s+of|photo\s+of/i) ||
+    lower.match(/\b(?:picture|image|photo|drawing|illustration)\b/i) ||
+    lower.match(/صوّر|ارسم|اعمل صورة|صورة|رسم|لوحة/i)
   ) {
     return 'image';
   }
@@ -73,7 +74,7 @@ function detectTool(message: string): 'search' | 'image' | 'code' | 'vision' | '
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, history, imageUrl, respondInArabic } = await request.json();
+    const { message, history, imageUrl } = await request.json();
 
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
@@ -152,9 +153,6 @@ export async function POST(request: NextRequest) {
 
     // Build the system prompt with context
     let systemContent = SYSTEM_PROMPT;
-    if (respondInArabic) {
-      systemContent += '\n\nIMPORTANT: The user spoke in Arabic. You MUST respond in Arabic (Egyptian dialect preferred). Keep it natural and conversational in Arabic.';
-    }
     if (searchContext) {
       systemContent += `\n\nWeb search results (use to inform your answer):\n${searchContext}`;
     }

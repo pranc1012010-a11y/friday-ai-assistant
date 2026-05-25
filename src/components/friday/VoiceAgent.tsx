@@ -6,7 +6,7 @@ import { Mic, MicOff, Volume2, VolumeX, Globe, Image as ImageIcon, Code, Eye, Co
 interface VoiceMessage {
   role: 'user' | 'assistant';
   content: string;
-  originalArabic?: string;
+  originalText?: string;
   tool?: string;
   searchResults?: { name: string; snippet: string; url: string }[];
   generatedImage?: string;
@@ -16,10 +16,8 @@ interface VoiceMessage {
 
 type AgentState = 'idle' | 'listening' | 'thinking' | 'speaking';
 
-// Detect if text is Arabic
 function isArabic(text: string): boolean {
-  const arabicRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
-  return arabicRegex.test(text);
+  return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
 }
 
 export default function VoiceAgent() {
@@ -40,18 +38,15 @@ export default function VoiceAgent() {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      synthRef.current = window.speechSynthesis;
-    }
+    if (typeof window !== 'undefined') synthRef.current = window.speechSynthesis;
   }, []);
 
   useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const speak = useCallback((text: string, isArabicText: boolean, onEnd?: () => void) => {
+  // FRIDAY always speaks English
+  const speak = useCallback((text: string, onEnd?: () => void) => {
     if (!synthRef.current || muted) {
       if (onEnd) onEnd();
       return;
@@ -59,44 +54,30 @@ export default function VoiceAgent() {
     synthRef.current.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = isArabicText ? 0.95 : 1.05;
+    utterance.rate = 1.05;
     utterance.pitch = 1.15;
     utterance.volume = 0.9;
-    utterance.lang = isArabicText ? 'ar-EG' : 'en-US';
+    utterance.lang = 'en-US';
 
     const voices = synthRef.current.getVoices();
-
-    if (isArabicText) {
-      // Try Arabic voice
-      const arabicVoice = voices.find((v) => v.lang.startsWith('ar'));
-      if (arabicVoice) utterance.voice = arabicVoice;
-    } else {
-      // English female voice
-      const femaleVoice = voices.find(
-        (v) =>
-          (v.name.toLowerCase().includes('samantha') ||
-            v.name.toLowerCase().includes('karen') ||
-            v.name.toLowerCase().includes('victoria') ||
-            v.name.toLowerCase().includes('zira') ||
-            (v.name.toLowerCase().includes('google') && v.lang.startsWith('en'))) &&
-          v.lang.startsWith('en')
-      );
-      if (femaleVoice) utterance.voice = femaleVoice;
-      else {
-        const englishVoice = voices.find((v) => v.lang.startsWith('en'));
-        if (englishVoice) utterance.voice = englishVoice;
-      }
+    const femaleVoice = voices.find(
+      (v) =>
+        (v.name.toLowerCase().includes('samantha') ||
+          v.name.toLowerCase().includes('karen') ||
+          v.name.toLowerCase().includes('victoria') ||
+          v.name.toLowerCase().includes('zira') ||
+          (v.name.toLowerCase().includes('google') && v.lang.startsWith('en'))) &&
+        v.lang.startsWith('en')
+    );
+    if (femaleVoice) utterance.voice = femaleVoice;
+    else {
+      const englishVoice = voices.find((v) => v.lang.startsWith('en'));
+      if (englishVoice) utterance.voice = englishVoice;
     }
 
     utterance.onstart = () => setState('speaking');
-    utterance.onend = () => {
-      setState('idle');
-      if (onEnd) onEnd();
-    };
-    utterance.onerror = () => {
-      setState('idle');
-      if (onEnd) onEnd();
-    };
+    utterance.onend = () => { setState('idle'); if (onEnd) onEnd(); };
+    utterance.onerror = () => { setState('idle'); if (onEnd) onEnd(); };
 
     synthRef.current.speak(utterance);
   }, [muted]);
@@ -108,18 +89,18 @@ export default function VoiceAgent() {
       (window as unknown as Record<string, typeof window.SpeechRecognition>)['SpeechRecognition'] ||
       (window as unknown as Record<string, typeof window.SpeechRecognition>)['webkitSpeechRecognition'];
     if (!SpeechRecognitionAPI) {
-      speak('Voice recognition not available in this browser, Boss. Try Chrome.', false);
+      speak('Voice recognition not available, Boss. Try Chrome.');
       return;
     }
 
     if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch { /* ignore */ }
+      try { recognitionRef.current.stop(); } catch {}
     }
 
     const recognition = new SpeechRecognitionAPI();
     recognition.continuous = false;
     recognition.interimResults = true;
-    // Set language based on current mode - ar-EG for Arabic, en-US for English
+    // Arabic or English recognition based on mode
     recognition.lang = lang === 'ar' ? 'ar-EG' : 'en-US';
 
     let finalTranscript = '';
@@ -162,35 +143,28 @@ export default function VoiceAgent() {
     recognition.start();
   }, [speak, lang]);
 
-  useEffect(() => {
-    startListeningRef.current = startListening;
-  }, [startListening]);
+  useEffect(() => { startListeningRef.current = startListening; }, [startListening]);
 
   const processMessage = useCallback(async (userMessage: string) => {
-    const isArabicInput = isArabic(userMessage);
+    const arabicInput = isArabic(userMessage);
     let messageForAI = userMessage;
-    let translatedFromArabic = '';
 
-    // If Arabic, translate to English for the AI
-    if (isArabicInput) {
+    // If Arabic input, translate to English first
+    if (arabicInput) {
       try {
         const translateRes = await fetch('/api/translate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: userMessage, targetLang: 'en' }),
+          body: JSON.stringify({ text: userMessage }),
         });
         const translateData = await translateRes.json();
         if (translateData.translation && translateData.translation !== userMessage) {
-          translatedFromArabic = userMessage;
           messageForAI = translateData.translation;
         }
       } catch {
-        // If translation fails, use original Arabic
+        // If translation fails, send Arabic directly - AI can still handle it
       }
     }
-
-    // Auto-detect language preference
-    if (isArabicInput && lang !== 'ar') setLang('ar');
 
     const history = historyRef.current.map((m) => ({ role: m.role, content: m.content }));
 
@@ -198,86 +172,59 @@ export default function VoiceAgent() {
       const res = await fetch('/api/friday', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: messageForAI,
-          history,
-          respondInArabic: isArabicInput,
-        }),
+        body: JSON.stringify({ message: messageForAI, history }),
       });
 
       const data = await res.json();
-      let responseText = data.response || 'Systems experiencing interference, Boss. Stand by.';
-      let voiceText = data.voiceResponse || data.response || '';
-
-      // If user spoke Arabic, translate the response back to Arabic
-      if (isArabicInput && !isArabic(responseText)) {
-        try {
-          const translateBackRes = await fetch('/api/translate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: responseText, targetLang: 'ar' }),
-          });
-          const translateBackData = await translateBackRes.json();
-          if (translateBackData.translation) {
-            voiceText = translateBackData.translation;
-            // Keep original English for display, Arabic for voice
-          }
-        } catch {
-          // If translation fails, use English response
-        }
-      }
+      const responseText = data.response || 'Systems experiencing interference, Boss. Stand by.';
 
       const assistantMsg: VoiceMessage = {
         role: 'assistant',
         content: responseText,
-        originalArabic: isArabicInput && !isArabic(responseText) ? voiceText : undefined,
         tool: data.tool,
         searchResults: data.searchResults,
         generatedImage: data.generatedImage,
         codeBlocks: data.codeBlocks,
         visionResult: data.visionResult,
       };
+
+      // Show user's original text (Arabic) in chat
       const userMsg: VoiceMessage = {
         role: 'user',
         content: userMessage,
+        originalText: arabicInput ? messageForAI : undefined,
       };
 
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
       historyRef.current = [...historyRef.current, { role: 'user', content: messageForAI }, { role: 'assistant', content: responseText }];
 
-      // Speak in the appropriate language
-      const speakArabic = isArabicInput && isArabic(voiceText);
-      speak(voiceText, speakArabic, () => {
+      // FRIDAY always speaks English
+      const voiceText = data.voiceResponse || responseText;
+      speak(voiceText, () => {
         if (shouldListenRef.current) startListeningRef.current();
       });
     } catch {
       const errorMsg: VoiceMessage = { role: 'assistant', content: 'Network glitch, Boss. Try again.' };
       setMessages((prev) => [...prev, errorMsg]);
-      speak(isArabicInput ? 'في مشكلة في الاتصال يا بوس. حاول تاني.' : 'Network glitch, Boss. Try again.', isArabicInput, () => {
+      speak('Network glitch, Boss. Try again.', () => {
         if (shouldListenRef.current) startListeningRef.current();
       });
     }
-  }, [speak, lang]);
+  }, [speak]);
 
-  useEffect(() => {
-    processMessageRef.current = processMessage;
-  }, [processMessage]);
+  useEffect(() => { processMessageRef.current = processMessage; }, [processMessage]);
 
   const activate = useCallback(() => {
     if (isActive) return;
     setIsActive(true);
     shouldListenRef.current = true;
 
-    const greetingAr = 'أهلاً يا بوس. كل الأنظمة شغالة. عايز أعملك إيه؟';
-    const greetingEn = 'Good to see you, Boss. All systems online. What do you need me to handle?';
-    const isArabicMode = lang === 'ar';
-    const greeting = isArabicMode ? greetingAr : greetingEn;
-
+    const greeting = 'Good to see you, Boss. All systems online. What do you need me to handle?';
     const msg: VoiceMessage = { role: 'assistant', content: greeting };
     setMessages([msg]);
     historyRef.current = [msg];
-    speak(greeting, isArabicMode, () => startListening());
-  }, [isActive, speak, startListening, lang]);
+    speak(greeting, () => startListening());
+  }, [isActive, speak, startListening]);
 
   const deactivate = useCallback(() => {
     setIsActive(false);
@@ -338,9 +285,10 @@ export default function VoiceAgent() {
               </div>
             </button>
 
-            {/* Language Toggle */}
+            {/* Language Toggle for Speech Recognition */}
             <div className="mt-6 flex items-center gap-2">
               <Languages className="w-4 h-4 text-gray-600" />
+              <span className="text-gray-600 font-mono text-xs">Listening:</span>
               <button
                 onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-800/60 border border-gray-700/50 text-gray-400 font-mono text-xs hover:text-cyan-400 hover:border-cyan-500/30 transition-all"
@@ -350,6 +298,9 @@ export default function VoiceAgent() {
                 <span className={lang === 'en' ? 'text-cyan-400' : ''}>English</span>
               </button>
             </div>
+            <p className="text-gray-700 font-mono text-[10px] mt-2">
+              {lang === 'ar' ? 'هيفهمك عربي ويرد إنجليزي' : 'English listening mode'}
+            </p>
           </div>
         ) : (
           /* Messages */
@@ -358,12 +309,20 @@ export default function VoiceAgent() {
               <div className={`max-w-[80%] ${msg.role === 'user' ? 'order-1' : ''}`}>
                 {/* User message */}
                 {msg.role === 'user' && (
-                  <div className="bg-cyan-500/15 text-cyan-100 border border-cyan-500/25 px-4 py-2.5 rounded-2xl rounded-tr-sm text-sm font-mono" dir={isArabic(msg.content) ? 'rtl' : 'ltr'}>
-                    {msg.content}
+                  <div className="space-y-1">
+                    <div className="bg-cyan-500/15 text-cyan-100 border border-cyan-500/25 px-4 py-2.5 rounded-2xl rounded-tr-sm text-sm font-mono" dir={isArabic(msg.content) ? 'rtl' : 'ltr'}>
+                      {msg.content}
+                    </div>
+                    {/* Show English translation if user spoke Arabic */}
+                    {msg.originalText && (
+                      <p className="text-cyan-400/30 text-[10px] font-mono px-2" dir="ltr">
+                        → {msg.originalText}
+                      </p>
+                    )}
                   </div>
                 )}
 
-                {/* Assistant message */}
+                {/* Assistant message - ALWAYS English */}
                 {msg.role === 'assistant' && (
                   <div className="space-y-2">
                     <div className="bg-gray-800/50 border border-gray-700/40 px-4 py-2.5 rounded-2xl rounded-tl-sm">
@@ -372,11 +331,7 @@ export default function VoiceAgent() {
                         <span className="text-cyan-400/60 text-[10px] font-mono tracking-wider">FRIDAY</span>
                         {toolBadge(msg.tool)}
                       </div>
-                      <p className="text-gray-200 text-sm leading-relaxed" dir={isArabic(msg.content) ? 'rtl' : 'ltr'}>{msg.content}</p>
-                      {/* Show Arabic translation if available */}
-                      {msg.originalArabic && (
-                        <p className="text-cyan-400/40 text-xs mt-2 pt-2 border-t border-gray-700/30 leading-relaxed" dir="rtl">{msg.originalArabic}</p>
-                      )}
+                      <p className="text-gray-200 text-sm leading-relaxed">{msg.content}</p>
                     </div>
 
                     {/* Generated Image */}
@@ -434,7 +389,7 @@ export default function VoiceAgent() {
           <div className="flex justify-start">
             <div className="bg-gray-800/50 border border-gray-700/40 px-4 py-3 rounded-2xl rounded-tl-sm flex items-center gap-2">
               <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-              <span className="text-cyan-400/60 text-xs font-mono tracking-wider">{lang === 'ar' ? 'بفكر...' : 'PROCESSING'}</span>
+              <span className="text-cyan-400/60 text-xs font-mono tracking-wider">PROCESSING</span>
             </div>
           </div>
         )}
@@ -453,7 +408,9 @@ export default function VoiceAgent() {
                 />
               ))}
             </div>
-            <span className="text-cyan-400 font-mono text-xs tracking-wider animate-pulse">{lang === 'ar' ? 'سمعتك...' : 'LISTENING'}</span>
+            <span className="text-cyan-400 font-mono text-xs tracking-wider animate-pulse">
+              {lang === 'ar' ? 'سمعتك...' : 'LISTENING'}
+            </span>
             <span className="text-cyan-100/60 text-sm font-mono" dir={isArabic(transcript) ? 'rtl' : 'ltr'}>{transcript}</span>
           </div>
         </div>
@@ -464,7 +421,7 @@ export default function VoiceAgent() {
         <div className="border-t border-cyan-500/10 bg-black/80 px-4 py-2">
           <div className="flex items-center justify-center gap-2">
             <Volume2 className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
-            <span className="text-purple-400/70 font-mono text-xs tracking-wider">{lang === 'ar' ? 'بقولك...' : 'SPEAKING'}</span>
+            <span className="text-purple-400/70 font-mono text-xs tracking-wider">SPEAKING</span>
           </div>
         </div>
       )}
@@ -477,12 +434,9 @@ export default function VoiceAgent() {
           </button>
 
           <button
-            onClick={() => {
-              const newLang = lang === 'ar' ? 'en' : 'ar';
-              setLang(newLang);
-            }}
-            className={`p-2.5 rounded-xl transition-all bg-gray-800/60 border border-gray-700/50 hover:text-cyan-400 text-xs font-mono`}
-            title="Switch language"
+            onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
+            className={`p-2.5 rounded-xl transition-all bg-gray-800/60 border ${lang === 'ar' ? 'border-cyan-500/30 text-cyan-400' : 'border-gray-700/50 text-gray-500 hover:text-cyan-400'}`}
+            title={lang === 'ar' ? 'Switch to English' : 'التبديل للعربي'}
           >
             <Languages className="w-4 h-4" />
           </button>
@@ -505,11 +459,11 @@ export default function VoiceAgent() {
         </div>
       )}
 
-      {/* Current language indicator */}
+      {/* Language indicator */}
       {isActive && (
         <div className="text-center py-1 bg-black/60">
           <span className="text-gray-700 font-mono text-[10px]">
-            {lang === 'ar' ? '🎤 عربي' : '🎤 English'}
+            {lang === 'ar' ? '🎤 Listening: Arabic → Responds: English' : '🎤 Listening: English → Responds: English'}
           </span>
         </div>
       )}
